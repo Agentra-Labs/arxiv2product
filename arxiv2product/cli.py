@@ -3,7 +3,7 @@ import sys
 
 from dotenv import load_dotenv
 
-from .errors import AgenticaConnectionError
+from .errors import AgentExecutionError, AgenticaConnectionError
 from .prompts import DEFAULT_MODEL
 
 load_dotenv()
@@ -35,6 +35,9 @@ async def main() -> None:
         await run_pipeline(paper_id, model=model)
     except AgenticaConnectionError as exc:
         print(f"Agentica connection error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+    except AgentExecutionError as exc:
+        print(f"Agent execution error: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
 
 

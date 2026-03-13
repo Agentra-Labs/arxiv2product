@@ -7,10 +7,13 @@ def build_report(
     paper: PaperContent,
     primitives: str,
     pain: str,
+    pain_sources: str,
     crosspoll: str,
     infra: str,
     temporal: str,
+    temporal_sources: str,
     redteam: str,
+    redteam_sources: str,
     final: str,
 ) -> str:
     """Assemble all agent outputs into a single markdown report."""
@@ -66,6 +69,8 @@ def build_report(
 
 {pain}
 
+{pain_sources}
+
 ---
 
 ## Cross-Pollinated Ideas
@@ -90,6 +95,8 @@ def build_report(
 
 {temporal}
 
+{temporal_sources}
+
 ---
 
 ## Red Team Destruction
@@ -97,6 +104,8 @@ def build_report(
 > Every idea attacked from 5 angles. Only survivors make it to the executive summary.
 
 {redteam}
+
+{redteam_sources}
 
 ---
 
