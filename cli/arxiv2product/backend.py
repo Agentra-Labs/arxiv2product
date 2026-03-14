@@ -12,7 +12,7 @@ from .errors import AgentExecutionError
 OPENAI_COMPATIBLE_BACKEND = "openai_compatible"
 AGENTICA_BACKEND = "agentica"
 DEFAULT_OPENAI_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_DIRECT_TIMEOUT_SECONDS = 120.0
+DEFAULT_DIRECT_TIMEOUT_SECONDS = 240.0
 
 
 def get_execution_backend_name() -> str:
