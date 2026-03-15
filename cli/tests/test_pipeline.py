@@ -67,19 +67,31 @@ class PipelineAsyncTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("temporal arbitrage timed out inside Agentica", str(ctx.exception))
 
-    async def test_run_pipeline_prefers_direct_backend_when_direct_key_exists(self):
+    async def test_run_pipeline_uses_agno_backend_by_default(self):
         with (
-            patch.dict(os.environ, {"OPENROUTER_API_KEY": "key"}, clear=True),
+            patch.dict(os.environ, {}, clear=True),
+            patch(
+                "arxiv2product.pipeline_agno.run_pipeline_agno",
+                new_callable=AsyncMock,
+                return_value="products_2603_09229.md",
+            ) as run_agno,
+        ):
+            from arxiv2product.pipeline import run_pipeline
+
+            output = await run_pipeline("2603.09229")
+
+        self.assertEqual(output, "products_2603_09229.md")
+        run_agno.assert_awaited_once_with("2603.09229", "anthropic/claude-sonnet-4")
+
+    async def test_run_pipeline_uses_openai_compatible_when_configured(self):
+        with (
+            patch.dict(os.environ, {"EXECUTION_BACKEND": "openai_compatible"}, clear=True),
             patch("arxiv2product.pipeline.build_openai_compatible_backend", return_value="backend"),
             patch(
                 "arxiv2product.pipeline._run_pipeline_with_openai_compatible",
                 new_callable=AsyncMock,
                 return_value="products_2603_09229.md",
             ) as run_direct,
-            patch(
-                "arxiv2product.pipeline._run_pipeline_with_agentica",
-                new_callable=AsyncMock,
-            ) as run_agentica,
         ):
             from arxiv2product.pipeline import run_pipeline
 
@@ -87,7 +99,6 @@ class PipelineAsyncTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(output, "products_2603_09229.md")
         run_direct.assert_awaited_once_with("2603.09229", "anthropic/claude-sonnet-4", "backend")
-        run_agentica.assert_not_awaited()
 
 
 if __name__ == "__main__":

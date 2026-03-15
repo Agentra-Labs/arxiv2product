@@ -1,16 +1,22 @@
 import asyncio
 import unittest
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
+
+# Mock agentica for tests as it might not be installed
+agentica_mock = MagicMock()
+agentica_mock.spawn = AsyncMock()
+sys.modules["agentica"] = agentica_mock
+sys.modules["agentica.logging"] = MagicMock()
 
 import httpx
 
 from arxiv2product.errors import AgenticaConnectionError
 
-
+@patch("agentica.spawn")
 class SpawnAgentTests(unittest.IsolatedAsyncioTestCase):
     """Tests for spawn_agent timeout and connection error paths."""
 
-    @patch("arxiv2product.pipeline.spawn")
     async def test_spawn_agent_raises_on_asyncio_timeout(self, mock_spawn):
         """Hanging backend connections should raise AgenticaConnectionError."""
         from arxiv2product.pipeline import spawn_agent
@@ -25,7 +31,6 @@ class SpawnAgentTests(unittest.IsolatedAsyncioTestCase):
                 await spawn_agent(premise="test", model="test-model")
             self.assertIn("Timed out after", str(ctx.exception))
 
-    @patch("arxiv2product.pipeline.spawn")
     async def test_spawn_agent_raises_on_httpx_timeout(self, mock_spawn):
         """httpx.TimeoutException during spawn should be wrapped."""
         from arxiv2product.pipeline import spawn_agent
@@ -36,7 +41,6 @@ class SpawnAgentTests(unittest.IsolatedAsyncioTestCase):
             await spawn_agent(premise="test", model="test-model")
         self.assertIn("Timed out while connecting", str(ctx.exception))
 
-    @patch("arxiv2product.pipeline.spawn")
     async def test_spawn_agent_raises_on_httpx_http_error(self, mock_spawn):
         """General httpx.HTTPError during spawn should be wrapped."""
         from arxiv2product.pipeline import spawn_agent
@@ -47,7 +51,6 @@ class SpawnAgentTests(unittest.IsolatedAsyncioTestCase):
             await spawn_agent(premise="test", model="test-model")
         self.assertIn("Agentica request failed", str(ctx.exception))
 
-    @patch("arxiv2product.pipeline.spawn")
     async def test_spawn_agent_disables_listener_by_default(self, mock_spawn):
         """Listener should be set to None when ENABLE_AGENT_LOGS is off."""
         from arxiv2product.pipeline import spawn_agent
@@ -60,7 +63,6 @@ class SpawnAgentTests(unittest.IsolatedAsyncioTestCase):
         _, kwargs = mock_spawn.call_args
         self.assertIsNone(kwargs.get("listener"))
 
-    @patch("arxiv2product.pipeline.spawn")
     async def test_spawn_agent_keeps_listener_when_logs_enabled(self, mock_spawn):
         """Listener should NOT be forced to None when logs are enabled."""
         from arxiv2product.pipeline import spawn_agent

@@ -21,12 +21,13 @@ class BackendSelectionTests(unittest.TestCase):
             "google/gemini-2.5-pro",
         )
 
-    def test_execution_backend_defaults_to_agentica_without_direct_key(self):
+    def test_execution_backend_defaults_to_agno_without_direct_key(self):
+        from arxiv2product.backend import AGNO_BACKEND
         with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(get_execution_backend_name(), AGENTICA_BACKEND)
+            self.assertEqual(get_execution_backend_name(), AGNO_BACKEND)
 
-    def test_execution_backend_prefers_openai_compatible_with_direct_key(self):
-        with patch.dict(os.environ, {"OPENROUTER_API_KEY": "key"}, clear=True):
+    def test_execution_backend_explicitly_set_to_openai_compatible(self):
+        with patch.dict(os.environ, {"EXECUTION_BACKEND": "openai_compatible"}, clear=True):
             self.assertEqual(get_execution_backend_name(), OPENAI_COMPATIBLE_BACKEND)
 
 

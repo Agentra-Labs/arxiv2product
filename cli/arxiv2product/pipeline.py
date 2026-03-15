@@ -5,8 +5,6 @@ from time import perf_counter
 from typing import Awaitable
 
 import httpx
-from agentica import spawn
-from agentica.logging import set_default_agent_listener
 
 from .backend import (
     AGENTICA_BACKEND,
@@ -127,6 +125,7 @@ def _agentica_connection_help() -> str:
 
 
 async def spawn_agent(**kwargs):
+    from agentica import spawn
     try:
         return await asyncio.wait_for(
             spawn(**kwargs),
@@ -374,6 +373,7 @@ def build_compact_paper_context(
 
 async def _run_pipeline_with_agentica(arxiv_id_or_url: str, model: str = DEFAULT_MODEL) -> str:
     """Run the pipeline using Agentica as the execution backend."""
+    from agentica.logging import set_default_agent_listener
     if not _agent_logs_enabled():
         set_default_agent_listener(None)
     speed_profile = _get_speed_profile()
@@ -753,8 +753,13 @@ async def _run_pipeline_with_openai_compatible(
 
 async def run_pipeline(arxiv_id_or_url: str, model: str = DEFAULT_MODEL) -> str:
     """Run the paper-to-product pipeline using the configured execution backend."""
+    from .backend import AGNO_BACKEND
+
     backend_name = get_execution_backend_name()
     if backend_name == OPENAI_COMPATIBLE_BACKEND:
         backend = build_openai_compatible_backend()
         return await _run_pipeline_with_openai_compatible(arxiv_id_or_url, model, backend)
+    if backend_name == AGNO_BACKEND:
+        from .pipeline_agno import run_pipeline_agno
+        return await run_pipeline_agno(arxiv_id_or_url, model)
     return await _run_pipeline_with_agentica(arxiv_id_or_url, model)

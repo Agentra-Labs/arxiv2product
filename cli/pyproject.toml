@@ -5,13 +5,14 @@ description = "Generate product ideas from arXiv papers with a multi-agent pipel
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "agno",
     "arxiv",
     "fastapi",
     "httpx",
     "pdfplumber",
     "pydantic",
+    "openai",
     "python-dotenv",
-    "symbolica-agentica",
     "uvicorn",
 ]
 

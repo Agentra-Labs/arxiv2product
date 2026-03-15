@@ -11,17 +11,17 @@ from .errors import AgentExecutionError
 
 OPENAI_COMPATIBLE_BACKEND = "openai_compatible"
 AGENTICA_BACKEND = "agentica"
+AGNO_BACKEND = "agno"
 DEFAULT_OPENAI_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_DIRECT_TIMEOUT_SECONDS = 240.0
 
 
 def get_execution_backend_name() -> str:
     configured = os.getenv("EXECUTION_BACKEND", "").strip().lower()
-    if configured in {OPENAI_COMPATIBLE_BACKEND, AGENTICA_BACKEND}:
+    if configured in {OPENAI_COMPATIBLE_BACKEND, AGENTICA_BACKEND, AGNO_BACKEND}:
         return configured
-    if os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY"):
-        return OPENAI_COMPATIBLE_BACKEND
-    return AGENTICA_BACKEND
+    # Default to Agno for new installations
+    return AGNO_BACKEND
 
 
 def normalize_model_name(model: str) -> str:

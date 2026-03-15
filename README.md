@@ -41,13 +41,13 @@ uv run python -m unittest discover -s tests
 ## Repository Layout
 
 - `cli/` — Python package, pipeline, API service, and tests
-- `cli/agentica-docs.md` — Agentica framework reference
 - `cli/.env.example` — environment variable reference
 
 ## Configuration
 
 Copy `cli/.env.example` to `cli/.env` and set:
 
-- `EXECUTION_BACKEND` — `agentica` (default) or `openai_compatible`
-- `AGENTICA_API_KEY` or `OPENROUTER_API_KEY` depending on backend
+- `EXECUTION_BACKEND` — `agno` (default), `agentica`, or `openai_compatible`
+- `OPENAI_API_KEY` or `OPENROUTER_API_KEY` for Agno/OpenAI backends
+- `AGENTICA_API_KEY` if using the Agentica backend
 - `SERPER_API_KEY` / `EXA_API_KEY` for web search
