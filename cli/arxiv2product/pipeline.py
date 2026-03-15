@@ -6,6 +6,7 @@ from typing import Awaitable
 
 import httpx
 from agentica import spawn
+from agentica.logging import set_default_agent_listener
 
 from .backend import (
     AGENTICA_BACKEND,
@@ -126,8 +127,6 @@ def _agentica_connection_help() -> str:
 
 
 async def spawn_agent(**kwargs):
-    if "listener" not in kwargs and not _agent_logs_enabled():
-        kwargs["listener"] = None
     try:
         return await asyncio.wait_for(
             spawn(**kwargs),
@@ -375,6 +374,8 @@ def build_compact_paper_context(
 
 async def _run_pipeline_with_agentica(arxiv_id_or_url: str, model: str = DEFAULT_MODEL) -> str:
     """Run the pipeline using Agentica as the execution backend."""
+    if not _agent_logs_enabled():
+        set_default_agent_listener(None)
     speed_profile = _get_speed_profile()
     print(f"📄 Fetching paper: {arxiv_id_or_url}")
     paper = await fetch_paper(arxiv_id_or_url)
@@ -591,8 +592,6 @@ async def _run_pipeline_with_openai_compatible(
     temporal_trace = SearchTrace(section_name="Temporal Arbitrage")
 
     phase_started_at = _phase_started("🚀 Phase 2: Running parallel analysis backend calls...")
-    pain_trace = SearchTrace(section_name="Market Pain Mapping")
-    temporal_trace = SearchTrace(section_name="Temporal Arbitrage")
 
     async def get_pain_raw():
         pain_search_packet = await build_search_packet(
