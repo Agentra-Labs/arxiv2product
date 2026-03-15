@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls ~/.claude/history.jsonl ~/.codex/history.jsonl 2>/dev/null && wc -l ~/.claude/history.jsonl ~/.codex/history.jsonl 2>/dev/null || echo \"No history files found\")",
+      "Bash(ls -la ~/.letta/agents/agent-3a3bec39-2c0a-4d20-b318-459f0fc8f371/memory/system/ 2>/dev/null || echo \"No memory directory\")",
+      "Bash(git shortlog:*)",
+      "Bash(ls:*)",
+      "Bash(git push:*)",
+      "Edit(**)",
+      "Bash(git add:*)"
+    ]
+  }
+}

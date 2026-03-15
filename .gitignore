@@ -17,3 +17,22 @@ wheels/
 # Logs and generated reports
 logs/
 products_*.md
+data/
+
+# Web app outputs
+apps/web/.next/
+apps/web/node_modules/
+apps/web/.env.local
+apps/web/.env
+apps/web/tsconfig.tsbuildinfo
+
+# CLI app outputs
+cli/.venv/
+cli/.pytest_cache/
+cli/data/
+cli/logs/
+cli/.env
+
+# Root level test files (tests live in cli/tests/)
+/test_*.py
+/.pytest_cache/

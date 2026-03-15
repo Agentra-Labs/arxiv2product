@@ -6,11 +6,21 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "arxiv",
+    "fastapi",
     "httpx",
     "pdfplumber",
+    "pydantic",
     "python-dotenv",
     "symbolica-agentica",
+    "uvicorn",
 ]
 
 [project.scripts]
 arxiv2product = "arxiv2product.cli:run"
+arxiv2product-api = "arxiv2product.service:run"
+
+[tool.uv]
+package = true
+
+[tool.setuptools]
+packages = ["arxiv2product"]
