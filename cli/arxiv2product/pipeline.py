@@ -2,7 +2,7 @@ import asyncio
 import os
 from pathlib import Path
 from time import perf_counter
-from typing import Awaitable
+from typing import Awaitable, Optional
 
 import httpx
 from agentica import spawn
@@ -29,8 +29,7 @@ from .prompts import (
     SYNTHESIZER_PREMISE,
     TEMPORAL_PREMISE,
 )
-from .paper_search import is_topic_query, run_paper_search, _paper_search_enabled
-from .paper_search import is_topic_query, run_paper_search, _paper_search_enabled
+from .paper_search import is_topic_query, run_paper_search
 from .reporting import build_report
 from .research import SearchTrace, make_disabled_web_search_tool, make_web_search_tool
 
@@ -774,10 +773,11 @@ async def run_pipeline(
     output_path: Optional[str] = None,
     display: bool = False,
     quiet: bool = False,
+    search_papers: bool = False,
 ) -> str:
     """Run the paper-to-product pipeline using the configured execution backend."""
     # Phase 0 (optional): PASA-style paper search for topic queries
-    if _paper_search_enabled() and is_topic_query(arxiv_id_or_url):
+    if search_papers and is_topic_query(arxiv_id_or_url):
         results = await run_paper_search(arxiv_id_or_url, model=model)
         if not results:
             raise AgentExecutionError(

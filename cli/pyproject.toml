@@ -10,6 +10,7 @@ dependencies = [
     "httpx",
     "pdfplumber",
     "pydantic",
+    "pyfiglet",
     "python-dotenv",
     "symbolica-agentica",
     "uvicorn",
