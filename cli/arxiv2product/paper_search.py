@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
@@ -9,6 +10,7 @@ from dataclasses import dataclass
 from time import perf_counter
 
 import arxiv
+import httpx
 
 from .backend import (
     AGENTICA_BACKEND,
@@ -68,18 +70,70 @@ async def _arxiv_search(query: str, max_results: int = PAPER_SEARCH_MAX_RESULTS)
     for paper in client.results(search):
         arxiv_id = paper.entry_id.split("/abs/")[-1].split("v")[0]
         abstract_short = paper.summary.replace("\n", " ")[:300]
-        results.append(
-            f"- [{arxiv_id}] {paper.title}\n  Abstract: {abstract_short}"
-        )
+        results.append(f"- [{arxiv_id}] {paper.title}\n  Abstract: {abstract_short}")
     if not results:
         return f"[arxiv_search] No results for: {query}"
     return f"[arxiv_search results={len(results)}]\n" + "\n".join(results)
 
 
+async def _semantic_scholar_search(query: str, max_results: int = 10) -> str:
+    """Search Semantic Scholar API and return formatted results."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                "https://api.semanticscholar.org/graph/v1/paper/search",
+                params={
+                    "query": query,
+                    "limit": max_results,
+                    "fields": "title,abstract,paperId,year,authors",
+                },
+            )
+            if response.status_code != 200:
+                return f"[semantic_scholar] API error: {response.status_code}"
+            data = response.json()
+            papers = data.get("data", [])
+            if not papers:
+                return f"[semantic_scholar] No results for: {query}"
+            results = []
+            for paper in papers:
+                paper_id = paper.get("paperId", "")
+                # Try to get arXiv ID if available
+                arxiv_id = ""
+                if "arxiv" in paper_id.lower():
+                    arxiv_id = paper_id.split(":")[-1] if ":" in paper_id else paper_id
+                title = paper.get("title", "Untitled")
+                abstract = paper.get("abstract") or "No abstract available"
+                abstract_short = abstract.replace("\n", " ")[:300]
+                year = paper.get("year", "")
+                prefix = f"[{arxiv_id}]" if arxiv_id else f"[ss:{paper_id[:8]}]"
+                results.append(
+                    f"- {prefix} {title} ({year})\n  Abstract: {abstract_short}"
+                )
+            return f"[semantic_scholar results={len(results)}]\n" + "\n".join(results)
+    except Exception as e:
+        return f"[semantic_scholar] Error: {str(e)[:100]}"
+
+
+async def _combined_paper_search(query: str, max_results: int = 10) -> str:
+    """Run arXiv and Semantic Scholar searches in parallel, combine results."""
+    arxiv_results, ss_results = await asyncio.gather(
+        _arxiv_search(query, max_results),
+        _semantic_scholar_search(query, max_results),
+        return_exceptions=True,
+    )
+    if isinstance(arxiv_results, Exception):
+        arxiv_results = f"[arxiv_search] Error: {str(arxiv_results)[:100]}"
+    if isinstance(ss_results, Exception):
+        ss_results = f"[semantic_scholar] Error: {str(ss_results)[:100]}"
+    return f"{arxiv_results}\n\n{ss_results}"
+
+
 def _make_arxiv_search_tool():
     """Create an arxiv search tool callable for agent scope."""
+
     async def arxiv_search_tool(query: str) -> str:
-        return await _arxiv_search(query)
+        return await _combined_paper_search(query)
+
     return arxiv_search_tool
 
 
@@ -213,9 +267,7 @@ async def _enrich_candidates(crawler_output: str) -> str:
     for paper in client.results(search):
         arxiv_id = paper.entry_id.split("/abs/")[-1].split("v")[0]
         abstract_short = paper.summary.replace("\n", " ")[:400]
-        lines.append(
-            f"### [{arxiv_id}] {paper.title}\n{abstract_short}"
-        )
+        lines.append(f"### [{arxiv_id}] {paper.title}\n{abstract_short}")
     return "\n\n".join(lines)
 
 
