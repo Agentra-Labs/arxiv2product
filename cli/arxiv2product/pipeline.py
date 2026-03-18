@@ -385,7 +385,7 @@ def build_compact_paper_context(
 
 
 async def _run_pipeline_with_agentica(
-    arxiv_ids: list[str], model: str = DEFAULT_MODEL
+    arxiv_ids: list[str], model: str = DEFAULT_MODEL, user_idea: str = ""
 ) -> str:
     """Run the pipeline using Agentica as the execution backend."""
     if not _agent_logs_enabled():
@@ -397,6 +397,8 @@ async def _run_pipeline_with_agentica(
     titles = [p.title for p in papers]
     console.print(f"✅ Loaded: {titles}")
     console.print(f"⚙️ Speed profile: {speed_profile}")
+
+    anchor_text = f"\n\nUSER'S CORE IDEA TO VALIDATE/AUGMENT:\n{user_idea}\nFocus all analysis, synthesis, and simulation around structurally building and stress-testing this specific idea." if user_idea else ""
 
     full_context = "\n\n---\n\n".join(
         [f"PAPER {i+1}:\n{build_full_paper_context(p)}" for i, p in enumerate(papers)]
@@ -453,7 +455,7 @@ async def _run_pipeline_with_agentica(
         f"Technical primitives:\n\n{primitives_summary}\n\n"
         f"Consolidated context:\n{compact_context}\n\n"
         "Search the web to find real, current market pain mapping to these primitives. "
-        "Go FAR beyond the papers' own domain.",
+        f"Go FAR beyond the papers' own domain.{anchor_text}",
         phase="pain scanner",
     )
     infra_task = call_agent_text(
@@ -461,7 +463,7 @@ async def _run_pipeline_with_agentica(
         f"Consolidated context:\n{compact_context}\n\n"
         f"Technical primitives:\n{primitives_summary}\n\n"
         "What NEW problems does widespread adoption of these techniques CREATE? "
-        "What products solve those second-order problems?",
+        f"What products solve those second-order problems?{anchor_text}",
         phase="infrastructure inversion",
     )
     temporal_task = call_agent_text(
@@ -470,7 +472,7 @@ async def _run_pipeline_with_agentica(
         f"Technical primitives:\n{primitives_summary}\n\n"
         "Identify temporal arbitrage windows. What can be built RIGHT NOW that "
         "won't be obvious for 12-24 months? Search the web for recent related "
-        "papers and industry trends.",
+        f"papers and industry trends.{anchor_text}",
         phase="temporal arbitrage",
     )
 
@@ -502,7 +504,7 @@ async def _run_pipeline_with_agentica(
         f"Technical primitives (Elements):\n{primitives_summary}\n\n"
         f"Market pain points found:\n{_truncate_text(pain_raw, PAIN_SUMMARY_CHARS)}\n\n"
         "Synthesize multiple primitives into 'Compound Opportunities'. "
-        "Think about architectural hints for how these elements bond.",
+        f"Think about architectural hints for how these elements bond.{anchor_text}",
         phase="compound synthesis",
     )
     _phase_finished("Phase 3", phase_started_at)
@@ -526,7 +528,7 @@ async def _run_pipeline_with_agentica(
         f"Consolidated context:\n{compact_context}\n\n"
         f"Technical primitives:\n{primitives_summary}\n\n"
         f"Candidate compound opportunities:\n{crosspoll_raw}\n\n"
-        "Simulate failure modes. Be brutal on mechanical logic, fair on potential.",
+        f"Simulate failure modes. Be brutal on mechanical logic, fair on potential.{anchor_text}",
         phase="structural simulation",
     )
     _phase_finished("Phase 4", phase_started_at)
@@ -539,7 +541,7 @@ async def _run_pipeline_with_agentica(
         f"Market analysis:\n{_truncate_text(pain_raw, PAIN_SUMMARY_CHARS)}\n\n"
         f"Compound opportunities & hints:\n{_truncate_text(crosspoll_raw, IDEA_SUMMARY_CHARS)}\n\n"
         f"Simulation failure modes:\n{_truncate_text(redteam_raw, IDEA_SUMMARY_CHARS)}\n\n"
-        "Synthesize these into a final ranked set of actionable Product Compounds.",
+        f"Synthesize these into a final ranked set of actionable Product Compounds.{anchor_text}",
         phase="final synthesis",
     )
     _phase_finished("Phase 5", phase_started_at)
@@ -577,6 +579,7 @@ async def _run_pipeline_with_openai_compatible(
     arxiv_ids: list[str],
     model: str,
     backend: OpenAICompatibleBackend,
+    user_idea: str = "",
 ) -> str:
     console.print(f"📄 Fetching {len(arxiv_ids)} paper(s): {', '.join(arxiv_ids)}")
     papers = await asyncio.gather(*(fetch_paper(aid) for aid in arxiv_ids))
@@ -584,6 +587,8 @@ async def _run_pipeline_with_openai_compatible(
     console.print(f"✅ Loaded: {titles}")
     console.print("⚙️ Execution backend: openai_compatible")
     console.print(f"⚙️ Speed profile: {_get_speed_profile()}")
+
+    anchor_text = f"\n\nUSER'S CORE IDEA TO VALIDATE/AUGMENT:\n{user_idea}\nFocus all analysis, synthesis, and simulation around structurally building and stress-testing this specific idea." if user_idea else ""
 
     full_context = "\n\n---\n\n".join(
         [f"PAPER {i+1}:\n{build_full_paper_context(p)}" for i, p in enumerate(papers)]
@@ -640,7 +645,7 @@ async def _run_pipeline_with_openai_compatible(
                 f"Technical primitives:\n{primitives_summary}\n\n"
                 f"Consolidated context:\n{compact_context}\n\n"
                 f"External market evidence:\n{pain_search_packet}\n\n"
-                "Find the strongest current market pain points linked to these primitives."
+                f"Find the strongest current market pain points linked to these primitives.{anchor_text}"
             ),
             phase="pain scanner",
             model=model,
@@ -654,7 +659,7 @@ async def _run_pipeline_with_openai_compatible(
             user_prompt=(
                 f"Consolidated context:\n{compact_context}\n\n"
                 f"Technical primitives:\n{primitives_summary}\n\n"
-                "What new problems does widespread adoption of these techniques create?"
+                f"What new problems does widespread adoption of these techniques create?{anchor_text}"
             ),
             phase="infrastructure inversion",
             model=model,
@@ -678,7 +683,7 @@ async def _run_pipeline_with_openai_compatible(
                 f"Consolidated context:\n{compact_context}\n\n"
                 f"Technical primitives:\n{primitives_summary}\n\n"
                 f"External evidence:\n{temporal_search_packet}\n\n"
-                "Identify temporal arbitrage windows for the consolidated primitives."
+                f"Identify temporal arbitrage windows for the consolidated primitives.{anchor_text}"
             ),
             phase="temporal arbitrage",
             model=model,
@@ -711,7 +716,7 @@ async def _run_pipeline_with_openai_compatible(
             f"Technical primitives (Elements):\n{primitives_summary}\n\n"
             f"Market pain points found:\n{_truncate_text(pain_raw, PAIN_SUMMARY_CHARS)}\n\n"
             "Synthesize multiple primitives into 'Compound Opportunities'. "
-            "Think about architectural hints for how these elements bond."
+            f"Think about architectural hints for how these elements bond.{anchor_text}"
         ),
         phase="compound synthesis",
         model=model,
@@ -731,7 +736,7 @@ async def _run_pipeline_with_openai_compatible(
         system_prompt=DESTROYER_PREMISE,
         user_prompt=(
             "Here are product compounds from research. Simulate failure modes.\n\n"
-            f"Papers: {', '.join(titles)}\n\n{all_ideas}"
+            f"Papers: {', '.join(titles)}\n\n{all_ideas}\n{anchor_text}"
         ),
         phase="structural simulation",
         model=model,
@@ -750,7 +755,7 @@ async def _run_pipeline_with_openai_compatible(
             f"Market analysis:\n{_truncate_text(pain_raw, PAIN_SUMMARY_CHARS)}\n\n"
             f"Compound opportunities & hints:\n{_truncate_text(crosspoll_raw, IDEA_SUMMARY_CHARS)}\n\n"
             f"Simulation failure modes:\n{_truncate_text(redteam_raw, IDEA_SUMMARY_CHARS)}\n\n"
-            "Synthesize these into a final ranked set of actionable Product Compounds."
+            f"Synthesize these into a final ranked set of actionable Product Compounds.{anchor_text}"
         ),
         phase="final synthesis",
         model=model,
@@ -791,6 +796,7 @@ async def run_pipeline(
     display: bool = False,
     quiet: bool = False,
     search_papers: bool = False,
+    user_idea: str = "",
 ) -> str:
     """Run the paper-to-product pipeline using the configured execution backend."""
     arxiv_ids: list[str] = []
@@ -802,8 +808,9 @@ async def run_pipeline(
             raise AgentExecutionError(
                 f"Paper search found no relevant papers for topic: {arxiv_id_or_url}"
             )
-        # Pick top 2 papers for compound synthesis
-        top_papers = results[:2]
+        # Pick top 5 papers if user provided an idea to anchor against, else top 2
+        num_papers = 5 if user_idea else 2
+        top_papers = results[:num_papers]
         for p in top_papers:
             console.print(f"📄 Selected paper: [{p.arxiv_id}] {p.title}")
             arxiv_ids.append(p.arxiv_id)
@@ -817,6 +824,6 @@ async def run_pipeline(
     if backend_name == OPENAI_COMPATIBLE_BACKEND:
         backend = build_openai_compatible_backend()
         return await _run_pipeline_with_openai_compatible(
-            arxiv_ids, model, backend
+            arxiv_ids, model, backend, user_idea
         )
-    return await _run_pipeline_with_agentica(arxiv_ids, model)
+    return await _run_pipeline_with_agentica(arxiv_ids, model, user_idea)

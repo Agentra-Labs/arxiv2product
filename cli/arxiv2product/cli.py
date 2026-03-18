@@ -74,12 +74,15 @@ async def _run_analyze(
     quiet: bool,
     search_papers: bool,
     open_report: bool,
+    user_idea: str,
 ):
     load_environment()
     if not quiet:
         print_banner()
         check_agentica_key()
         console.print(f"📄 [bold]Processing:[/bold] {arxiv_id_or_url}")
+        if user_idea:
+            console.print(f"💡 [bold]User Idea Anchor:[/bold] {user_idea}")
         console.print(f"⚙️  [bold]Model:[/bold] {model}")
 
     from .pipeline import run_pipeline
@@ -93,6 +96,7 @@ async def _run_analyze(
             display=display,
             quiet=quiet,
             search_papers=search_papers,
+            user_idea=user_idea,
         )
 
         if not quiet:
@@ -130,7 +134,7 @@ async def _run_analyze(
 
 
 def analyze(
-    arxiv_id_or_url: str,
+    arxiv_id_or_url: str = "",
     model: str = DEFAULT_MODEL,
     save: bool = False,
     output: str = "",
@@ -138,6 +142,7 @@ def analyze(
     quiet: bool = False,
     search_papers: bool = False,
     open: bool = False,
+    idea: str = "",
 ):
     """Transform one or more research papers into 4-6 company ideas with moats and plans.
     
@@ -148,21 +153,32 @@ def analyze(
     If multiple papers are provided (comma-separated), the pipeline will
     attempt a "Compound Synthesis" across all their primitives.
 
+    If you have your own idea, pass `--idea "My idea"` to validate and augment it.
+    If papers are not specified, use `--search-papers` and it will find the top 5 relevant papers for your idea.
+
     Usage:
         arxiv2product analyze 2603.09229
         arxiv2product analyze 2603.09229,2506.10943
-        arxiv2product analyze 2603.09229 --open
-        arxiv2product analyze "research topic" --search-papers
+        arxiv2product analyze "quantum error correction" --search-papers
+        arxiv2product analyze --idea "A startup that uses LLMs to automate QA" --search-papers
     """
     out_opt = output if output else None
     
+    # If no arxiv_id_or_url but we have an idea, use the idea as the topic
+    if not arxiv_id_or_url and idea and search_papers:
+        arxiv_id_or_url = idea
+    
+    if not arxiv_id_or_url:
+        console.print("❌ [bold red]Error:[/bold red] You must provide an arXiv ID, URL, or topic. Or use --idea with --search-papers.")
+        sys.exit(1)
+
     # Handle multiple IDs
     ids = [x.strip() for x in arxiv_id_or_url.split(",")]
     arg_input = ids if len(ids) > 1 else ids[0]
 
     asyncio.run(
         _run_analyze(
-            arg_input, model, save, out_opt, display, quiet, search_papers, open
+            arg_input, model, save, out_opt, display, quiet, search_papers, open, idea
         )
     )
 

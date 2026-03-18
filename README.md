@@ -63,7 +63,21 @@ ENABLE_PAPER_SEARCH=1 uv run arxiv2product analyze "self-adapting language model
 The pipeline will:
 1. Run a PASA-style Crawler agent to find relevant papers (arXiv + web search)
 2. Run a Selector agent to score and rank them
-3. Pick the top paper and run the full 5-phase analysis
+3. Pick the top papers and run the full 5-phase analysis
+
+### Bring Your Own Idea (Validation & Augmentation)
+
+**When you already have a startup idea.** You can invert the pipeline to structurally validate and augment your specific idea using research papers.
+
+```bash
+# Validate your idea against a specific paper
+uv run arxiv2product analyze 2603.09229 --idea "A developer tool that automates PR reviews"
+
+# Have the pipeline find the top 5 relevant papers to validate your idea
+uv run arxiv2product analyze --idea "A startup building AI-designed metamaterials" --search-papers
+```
+
+When you provide an `--idea`, the pipeline's agents (Cross-pollinator, Infrastructure Inversion, Temporal Arbitrage, and Destroyer) will anchor their analysis entirely on your concept—acting as a technical simulation lab to build out the architecture and find its mechanical failure points.
 
 ---
 
