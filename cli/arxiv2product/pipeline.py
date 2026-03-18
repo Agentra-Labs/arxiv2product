@@ -385,15 +385,16 @@ def build_compact_paper_context(
 
 
 async def _run_pipeline_with_agentica(
-    arxiv_ids: list[str], model: str = DEFAULT_MODEL, user_idea: str = ""
+    arxiv_ids: list[str], model: str = DEFAULT_MODEL, user_idea: str = "", github_mapping: dict[str, str] | None = None
 ) -> str:
     """Run the pipeline using Agentica as the execution backend."""
     if not _agent_logs_enabled():
         set_default_agent_listener(None)
     speed_profile = _get_speed_profile()
+    github_mapping = github_mapping or {}
     
     console.print(f"📄 Fetching {len(arxiv_ids)} paper(s): {', '.join(arxiv_ids)}")
-    papers = await asyncio.gather(*(fetch_paper(aid) for aid in arxiv_ids))
+    papers = await asyncio.gather(*(fetch_paper(aid, github_mapping.get(aid, "")) for aid in arxiv_ids))
     titles = [p.title for p in papers]
     console.print(f"✅ Loaded: {titles}")
     console.print(f"⚙️ Speed profile: {speed_profile}")
@@ -401,19 +402,35 @@ async def _run_pipeline_with_agentica(
     anchor_text = f"\n\nUSER'S CORE IDEA TO VALIDATE/AUGMENT:\n{user_idea}\nFocus all analysis, synthesis, and simulation around structurally building and stress-testing this specific idea." if user_idea else ""
 
     full_context = "\n\n---\n\n".join(
-        [f"PAPER {i+1}:\n{build_full_paper_context(p)}" for i, p in enumerate(papers)]
+        [
+            f"PAPER {i+1}:\n{build_full_paper_context(p)}"
+            + (f"\nGITHUB REPOSITORY: {p.github_url}" if p.github_url else "")
+            for i, p in enumerate(papers)
+        ]
     )
     console.print(f"🧠 Phase 1 context: {len(full_context)} chars")
 
     phase_started_at = _phase_started("🔬 Phase 1: Extracting technical primitives...")
-    decomposer = await spawn_agent(premise=DECOMPOSER_PREMISE, model=model)
+    # Add web search tool to decomposer for code skimming
+    decomposer_trace = SearchTrace(section_name="Code Skimming")
+    decomposer = await spawn_agent(
+        premise=DECOMPOSER_PREMISE,
+        model=model,
+        scope={
+            "web_search": make_web_search_tool(
+                default_intent="fast",
+                trace=decomposer_trace,
+            )
+        },
+    )
     primitives_raw = await call_agent_text(
         decomposer,
         f"Analyze these research papers and extract all atomic technical primitives. "
+        f"For papers with GitHub URLs, skim the repository (README and core code) to ensure practical orientation. "
         f"Think about interaction hooks between elements of DIFFERENT papers.\n\n{full_context}",
         phase="technical primitive extraction",
     )
-    _phase_finished("Phase 1", phase_started_at)
+    _phase_finished("Phase 1", phase_started_at, details=f"(code skimming calls={decomposer_trace.calls_used})")
     primitives_summary = _truncate_text(primitives_raw, PRIMITIVE_SUMMARY_CHARS)
     
     compact_context = "\n\n---\n\n".join(
@@ -580,9 +597,11 @@ async def _run_pipeline_with_openai_compatible(
     model: str,
     backend: OpenAICompatibleBackend,
     user_idea: str = "",
+    github_mapping: dict[str, str] | None = None,
 ) -> str:
+    github_mapping = github_mapping or {}
     console.print(f"📄 Fetching {len(arxiv_ids)} paper(s): {', '.join(arxiv_ids)}")
-    papers = await asyncio.gather(*(fetch_paper(aid) for aid in arxiv_ids))
+    papers = await asyncio.gather(*(fetch_paper(aid, github_mapping.get(aid, "")) for aid in arxiv_ids))
     titles = [p.title for p in papers]
     console.print(f"✅ Loaded: {titles}")
     console.print("⚙️ Execution backend: openai_compatible")
@@ -591,17 +610,40 @@ async def _run_pipeline_with_openai_compatible(
     anchor_text = f"\n\nUSER'S CORE IDEA TO VALIDATE/AUGMENT:\n{user_idea}\nFocus all analysis, synthesis, and simulation around structurally building and stress-testing this specific idea." if user_idea else ""
 
     full_context = "\n\n---\n\n".join(
-        [f"PAPER {i+1}:\n{build_full_paper_context(p)}" for i, p in enumerate(papers)]
+        [
+            f"PAPER {i+1}:\n{build_full_paper_context(p)}"
+            + (f"\nGITHUB REPOSITORY: {p.github_url}" if p.github_url else "")
+            for i, p in enumerate(papers)
+        ]
     )
     console.print(f"🧠 Phase 1 context: {len(full_context)} chars")
 
     phase_started_at = _phase_started("🔬 Phase 1: Extracting technical primitives...")
+    # For openai_compatible, we'll try to build a search packet for the github repos if they exist
+    skimming_packet = ""
+    for p in papers:
+        if p.github_url:
+            skimming_packet += f"\n\nGITHUB SKIM FOR {p.title} ({p.github_url}):\n"
+            # Build a trace just for the packet collection
+            skim_trace = SearchTrace(section_name=f"GitHub Skim: {p.title}")
+            skimming_packet += await build_search_packet(
+                backend=backend,
+                paper=p,
+                primitives_summary="",
+                trace=skim_trace,
+                phase="code skimming",
+                default_intent="fast",
+                model=model,
+            )
+
     primitives_raw = await call_direct_text(
         backend,
         system_prompt=DECOMPOSER_PREMISE,
         user_prompt=(
             "Analyze these research papers and extract all atomic technical primitives. "
+            "Focus on implementation-level primitives. "
             f"Think about interaction hooks between elements of DIFFERENT papers.\n\n{full_context}"
+            + (f"\n\nEXTERNAL IMPLEMENTATION EVIDENCE:\n{skimming_packet}" if skimming_packet else "")
         ),
         phase="technical primitive extraction",
         model=model,
@@ -800,6 +842,7 @@ async def run_pipeline(
 ) -> str:
     """Run the paper-to-product pipeline using the configured execution backend."""
     arxiv_ids: list[str] = []
+    github_mapping: dict[str, str] = {}
 
     # Phase 0 (optional): PASA-style paper search for topic queries
     if search_papers and isinstance(arxiv_id_or_url, str) and is_topic_query(arxiv_id_or_url):
@@ -812,7 +855,11 @@ async def run_pipeline(
         num_papers = 5 if user_idea else 2
         top_papers = results[:num_papers]
         for p in top_papers:
-            console.print(f"📄 Selected paper: [{p.arxiv_id}] {p.title}")
+            msg = f"📄 Selected paper: [{p.arxiv_id}] {p.title}"
+            if p.github_url:
+                msg += f" [GitHub: {p.github_url}]"
+                github_mapping[p.arxiv_id] = p.github_url
+            console.print(msg)
             arxiv_ids.append(p.arxiv_id)
     else:
         if isinstance(arxiv_id_or_url, str):
@@ -824,6 +871,6 @@ async def run_pipeline(
     if backend_name == OPENAI_COMPATIBLE_BACKEND:
         backend = build_openai_compatible_backend()
         return await _run_pipeline_with_openai_compatible(
-            arxiv_ids, model, backend, user_idea
+            arxiv_ids, model, backend, user_idea, github_mapping
         )
-    return await _run_pipeline_with_agentica(arxiv_ids, model, user_idea)
+    return await _run_pipeline_with_agentica(arxiv_ids, model, user_idea, github_mapping)

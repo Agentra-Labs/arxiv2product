@@ -12,3 +12,4 @@ class PaperContent:
     figures_captions: list[str]
     tables_text: list[str]
     references_titles: list[str]
+    github_url: str = ""

@@ -28,7 +28,7 @@ def normalize_arxiv_id(arxiv_id_or_url: str) -> str:
     )
 
 
-async def fetch_paper(arxiv_id_or_url: str) -> PaperContent:
+async def fetch_paper(arxiv_id_or_url: str, github_url: str = "") -> PaperContent:
     """Fetch paper metadata via arxiv API and parse the full PDF."""
     arxiv_id = normalize_arxiv_id(arxiv_id_or_url)
     client = arxiv.Client()
@@ -41,6 +41,11 @@ async def fetch_paper(arxiv_id_or_url: str) -> PaperContent:
 
     ref_section = sections.get("references", sections.get("bibliography", ""))
 
+    if not github_url:
+        github_match = re.search(r"https?://github\.com/[a-zA-Z0-9\-_./]+", result.summary)
+        if github_match:
+            github_url = github_match.group(0)
+
     return PaperContent(
         arxiv_id=arxiv_id,
         title=result.title,
@@ -51,6 +56,7 @@ async def fetch_paper(arxiv_id_or_url: str) -> PaperContent:
         figures_captions=fig_captions,
         tables_text=tables,
         references_titles=extract_reference_titles(ref_section),
+        github_url=github_url,
     )
 
 

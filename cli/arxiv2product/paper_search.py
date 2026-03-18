@@ -44,6 +44,7 @@ class PaperSearchResult:
     abstract: str
     score: float
     reason: str
+    github_url: str = ""
 
 
 def is_topic_query(input_str: str) -> bool:
@@ -71,8 +72,14 @@ async def _arxiv_search(query: str, max_results: int = PAPER_SEARCH_MAX_RESULTS)
     results: list[str] = []
     for paper in client.results(search):
         arxiv_id = paper.entry_id.split("/abs/")[-1].split("v")[0]
-        abstract_short = paper.summary.replace("\n", " ")[:300]
-        results.append(f"- [{arxiv_id}] {paper.title}\n  Abstract: {abstract_short}")
+        abstract = paper.summary.replace("\n", " ")
+        abstract_short = abstract[:400]
+        
+        # Heuristic for github links in abstract
+        github_match = re.search(r"https?://github\.com/[a-zA-Z0-9\-_./]+", abstract)
+        github_info = f"\n  GitHub: {github_match.group(0)}" if github_match else ""
+        
+        results.append(f"- [{arxiv_id}] {paper.title}{github_info}\n  Abstract: {abstract_short}")
     if not results:
         return f"[arxiv_search] No results for: {query}"
     return f"[arxiv_search results={len(results)}]\n" + "\n".join(results)
@@ -105,11 +112,17 @@ async def _semantic_scholar_search(query: str, max_results: int = 10) -> str:
                     arxiv_id = paper_id.split(":")[-1] if ":" in paper_id else paper_id
                 title = paper.get("title", "Untitled")
                 abstract = paper.get("abstract") or "No abstract available"
-                abstract_short = abstract.replace("\n", " ")[:300]
+                abstract_clean = abstract.replace("\n", " ")
+                abstract_short = abstract_clean[:400]
+                
+                # Heuristic for github links in abstract
+                github_match = re.search(r"https?://github\.com/[a-zA-Z0-9\-_./]+", abstract_clean)
+                github_info = f"\n  GitHub: {github_match.group(0)}" if github_match else ""
+                
                 year = paper.get("year", "")
                 prefix = f"[{arxiv_id}]" if arxiv_id else f"[ss:{paper_id[:8]}]"
                 results.append(
-                    f"- {prefix} {title} ({year})\n  Abstract: {abstract_short}"
+                    f"- {prefix} {title} ({year}){github_info}\n  Abstract: {abstract_short}"
                 )
             return f"[semantic_scholar results={len(results)}]\n" + "\n".join(results)
     except Exception as e:
@@ -172,6 +185,7 @@ def _parse_selector_output(text: str) -> list[PaperSearchResult]:
                 abstract=str(item.get("abstract", "")),
                 score=float(item.get("score", 0.0)),
                 reason=str(item.get("reason", "")),
+                github_url=str(item.get("github_url", "")),
             )
         )
     results.sort(key=lambda r: r.score, reverse=True)
@@ -268,8 +282,14 @@ async def _enrich_candidates(crawler_output: str) -> str:
     lines: list[str] = []
     for paper in client.results(search):
         arxiv_id = paper.entry_id.split("/abs/")[-1].split("v")[0]
-        abstract_short = paper.summary.replace("\n", " ")[:400]
-        lines.append(f"### [{arxiv_id}] {paper.title}\n{abstract_short}")
+        abstract = paper.summary.replace("\n", " ")
+        abstract_short = abstract[:500]
+        
+        # Heuristic for github links
+        github_match = re.search(r"https?://github\.com/[a-zA-Z0-9\-_./]+", abstract)
+        github_info = f"\n  GitHub: {github_match.group(0)}" if github_match else ""
+        
+        lines.append(f"### [{arxiv_id}] {paper.title}{github_info}\n{abstract_short}")
     return "\n\n".join(lines)
 
 

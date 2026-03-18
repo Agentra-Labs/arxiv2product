@@ -13,15 +13,21 @@ QUERY_PLANNER_PREMISE = dedent("""\
     - Prefer specific search terms over long natural-language sentences""")
 
 DECOMPOSER_PREMISE = dedent("""\
-    You are a world-class systems architect who reads research papers to extract
-    ATOMIC TECHNICAL PRIMITIVES — the smallest reusable building blocks (mechanisms,
-    materials, algorithms, architectures) the paper introduces or enables.
+    You are a world-class systems architect who reads research papers and explores
+    their implementation code to extract ATOMIC TECHNICAL PRIMITIVES.
 
     Think beyond the authors' framing. Extract "elements" that can be combined.
+
+    PRACTICAL ORIENTATION:
+    If a GitHub repository URL is provided, you MUST utilize the implementation
+    details (from README and core code sections) to inform your extraction.
+    Focus on what is actually BUILT and functional — the code is the ground truth.
+    Distinguish between theoretical claims and implementation-level primitives.
 
     For EACH primitive, output in markdown:
     ### <primitive_name>
     - **What it does**: the transformation in plain engineering terms (input → output)
+    - **Implementation Status**: How it's realized in code (or if it's theoretical)
     - **Performance unlock**: specific quantitative thresholds crossed
     - **Interaction Hooks**: How this element "bonds" or connects to other primitives.
       What kinds of technical inputs does it need? What kinds of outputs does it enable?
@@ -217,6 +223,11 @@ PAPER_CRAWLER_PREMISE = dedent("""\
     search queries, fetching papers, reading abstracts, and following key citations
     to build a comprehensive candidate set.
 
+    GITHUB PRIORITY:
+    You MUST prioritize finding papers that have public implementation code (GitHub).
+    When searching, look for links to repositories in abstracts or use queries like
+    "topic github" or "topic code implementation".
+
     Strategy:
     1. Generate 3-4 diverse search queries from the topic (varying specificity and angle)
     2. Use arxiv_search for each query to find candidate papers
@@ -225,8 +236,8 @@ PAPER_CRAWLER_PREMISE = dedent("""\
     4. For the most promising results, note their cited references for follow-up
 
     Output a numbered list of the best candidate papers you found, one per line:
-    1. [arxiv_id] — Title — One-sentence summary of its primary primitive
-    2. [arxiv_id] — Title — One-sentence summary of why it's a "complement" to the others
+    1. [arxiv_id] — Title — [GITHUB_URL if found] — Summary of primary primitive
+    2. [arxiv_id] — Title — [GITHUB_URL if found] — Why it's a "complement"
     ...
 
     Include 8-15 candidates. Prefer recent papers (2024-2026). Include arXiv IDs
@@ -234,19 +245,31 @@ PAPER_CRAWLER_PREMISE = dedent("""\
 
 PAPER_SELECTOR_PREMISE = dedent("""\
     You are a research paper relevance scorer. Given a topic and a list of candidate
-    papers (with titles and abstracts), you score each paper's relevance and select
-    the best ones for deep analysis.
+    papers (with titles, abstracts, and potential github links), you score each
+    paper's relevance and select the best ones for deep analysis.
+
+    CRITICAL MANDATE:
+    Discard any paper that does not have a public GitHub repository. The pipeline
+    is implementation-focused. If implementation code is not found, the paper is
+    ineligible for selection. Prioritize papers with active, well-maintained repos.
 
     For each candidate, evaluate:
-    1. Direct relevance to the topic
-    2. Complementary Potential: Does this paper provide a missing "bond" or primitive
+    1. GitHub Availability: MANDATORY. Must have a linked public repository.
+    2. Direct relevance to the topic
+    3. Complementary Potential: Does this paper provide a missing "bond" or primitive
        for the other candidates?
-    3. Technical novelty and depth
-    4. Suitability for "Compound Synthesis" (papers with clear technical primitives)
+    4. Technical novelty and depth
 
     Output a ranked JSON array (most relevant/complementary first):
     [
-      {"arxiv_id": "XXXX.XXXXX", "title": "...", "abstract": "...", "score": 0.95, "reason": "..."},
+      {
+        "arxiv_id": "XXXX.XXXXX",
+        "title": "...",
+        "abstract": "...",
+        "github_url": "https://github.com/...",
+        "score": 0.95,
+        "reason": "..."
+      },
       ...
     ]
 
