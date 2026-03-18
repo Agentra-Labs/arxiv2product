@@ -44,7 +44,7 @@ def check_agentica_key():
 
 def print_banner():
     banner = pyfiglet.figlet_format("arxiv2product", font="double_blocky")
-    console.print(f"[bold cyan]{banner}[/bold cyan]")
+    console.print(f"[bold magenta]{banner}[/bold magenta]")
 
 
 def display_report(report_path: str):
@@ -139,21 +139,30 @@ def analyze(
     search_papers: bool = False,
     open: bool = False,
 ):
-    """Transform a research paper into 4-6 company ideas with moats and plans.
+    """Transform one or more research papers into 4-6 company ideas with moats and plans.
     
     This command runs the full 5-phase adversarial pipeline (Decomposer,
     Pain Scanner, Infrastructure Inversion, Temporal Arbitrage, and Red Team)
-    to analyze a technical paper and synthesize market opportunities.
+    to analyze technical papers and synthesize market opportunities.
+
+    If multiple papers are provided (comma-separated), the pipeline will
+    attempt a "Compound Synthesis" across all their primitives.
 
     Usage:
         arxiv2product analyze 2603.09229
+        arxiv2product analyze 2603.09229,2506.10943
         arxiv2product analyze 2603.09229 --open
         arxiv2product analyze "research topic" --search-papers
     """
     out_opt = output if output else None
+    
+    # Handle multiple IDs
+    ids = [x.strip() for x in arxiv_id_or_url.split(",")]
+    arg_input = ids if len(ids) > 1 else ids[0]
+
     asyncio.run(
         _run_analyze(
-            arxiv_id_or_url, model, save, out_opt, display, quiet, search_papers, open
+            arg_input, model, save, out_opt, display, quiet, search_papers, open
         )
     )
 
