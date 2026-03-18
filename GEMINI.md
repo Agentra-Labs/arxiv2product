@@ -31,10 +31,12 @@ cp .env.example .env # Configure your API keys (AGENTICA_API_KEY, etc.)
 ```
 
 ### CLI Commands
-- **Generate Report:** `uv run arxiv2product <arxiv_id_or_url>`
-- **Topic Discovery:** `uv run arxiv2product "research topic" --search-papers` (Requires `ENABLE_PAPER_SEARCH=1` in `.env`)
-- **Competitor Intelligence:** `uv run arxiv2product-compete <report_path>.md`
-- **Start API Service:** `uv run arxiv2product-api` (Default port: 8010)
+- **Generate Report:** `uv run arxiv2product analyze <arxiv_id_or_url>`
+- **Display Report:** `uv run arxiv2product analyze <id> --display` (Uses `glow` if installed, falls back to `rich`)
+- **Topic Discovery:** `uv run arxiv2product analyze "research topic" --search-papers`
+- **Competitor Intelligence:** `uv run arxiv2product compete <report_path>.md`
+- **Start API Service:** `uv run arxiv2product serve` (Default port: 8010)
+- **Interactive Setup:** `uv run arxiv2product init` (Configure API keys interactively)
 
 ### Testing
 Run the test suite using `unittest`:

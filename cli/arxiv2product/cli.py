@@ -47,6 +47,24 @@ def print_banner():
     console.print(f"[bold cyan]{banner}[/bold cyan]")
 
 
+def display_report(report_path: str):
+    """Render the report in the terminal using glow or rich."""
+    if not report_path or not Path(report_path).exists():
+        return
+
+    import shutil
+    import subprocess
+
+    # Try to use glow first if available
+    glow_path = shutil.which("glow")
+    if glow_path:
+        subprocess.call([glow_path, report_path])
+    else:
+        # Fallback to rich
+        content = Path(report_path).read_text(encoding="utf-8")
+        console.print(Markdown(content))
+
+
 async def _run_analyze(
     arxiv_id_or_url: str,
     model: str,
@@ -86,6 +104,9 @@ async def _run_analyze(
                 console.print(
                     f"✅ [bold green]Processing complete:[/bold green] {arxiv_id_or_url}"
                 )
+
+        if display:
+            display_report(report_path)
 
         if open_report and report_path and Path(report_path).exists():
             console.print(f"📖 [bold]Opening report:[/bold] {report_path}...")

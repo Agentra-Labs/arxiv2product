@@ -42,6 +42,9 @@ cd cli
 # From an arXiv ID
 uv run arxiv2product analyze 2603.09229
 
+# Render in terminal (Uses glow if available, falls back to Rich)
+uv run arxiv2product analyze 2603.09229 --display
+
 # Automatically open the report when finished
 uv run arxiv2product analyze 2603.09229 --open
 ```
