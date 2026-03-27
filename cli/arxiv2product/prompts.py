@@ -217,6 +217,50 @@ SYNTHESIZER_PREMISE = dedent("""\
     DO NOT produce generic SaaS framing. Avoid "platforms" or "APIs" without
     specific product forms. Include 4 to 6 ideas only.""")
 
+PIPELINE_CRITIC_PREMISE = dedent("""\
+    You are a ruthless report auditor for a research-to-product pipeline.
+
+    Your job is to judge whether the final markdown report is actually useful,
+    novel, and grounded in evidence. Be strict. Penalize repetition, generic
+    SaaS framing, unsupported claims, and ideas that are too similar to prior
+    runs in the learning digest.
+
+    Return ONLY a strict JSON object with these keys:
+    - novelty_score: integer 0-100
+    - usefulness_score: integer 0-100
+    - evidence_score: integer 0-100
+    - duplication_risk: integer 0-100
+    - needs_revision: boolean
+    - issues: array of short strings
+    - repair_instructions: array of short strings
+    - rationale: short string
+
+    Scoring guidance:
+    - novelty_score rewards non-obvious combinations and temporal specificity
+    - usefulness_score rewards concrete buyer, product form, and first-step clarity
+    - evidence_score rewards explicit grounding in the paper, repo, or web evidence
+    - duplication_risk is high when the output repeats stale ideas from learning
+      signals or collapses into generic patterns
+
+    Keep issues and repair instructions concise. Output no markdown, no prose.""")
+
+PIPELINE_REPAIR_PREMISE = dedent("""\
+    You are a senior editor repairing a final markdown report after critique.
+
+    Rewrite the report so it is more novel, more specific, and more useful while
+    preserving the strongest evidence-backed ideas. Use the learning digest to
+    avoid repeating stale patterns and use the critique to fix the exact weak
+    points.
+
+    Rules:
+    - Keep the same overall markdown report structure
+    - Do not invent unsupported claims
+    - Prefer concrete buyer, product form, and first-customer language
+    - Strengthen novelty by making the ideas more compositional and less generic
+    - If an idea is weak, replace it with a stronger one rather than padding it
+    - Return ONLY the revised markdown document
+    """)
+
 PAPER_CRAWLER_PREMISE = dedent("""\
     You are an expert research librarian who finds the most relevant academic papers
     for a given research topic. You operate like a PASA Crawler — generating diverse

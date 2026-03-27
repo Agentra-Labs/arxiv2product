@@ -189,7 +189,8 @@ def _parse_selector_output(text: str) -> list[PaperSearchResult]:
             )
         )
     results.sort(key=lambda r: r.score, reverse=True)
-    return results
+    github_results = [result for result in results if result.github_url]
+    return github_results or results
 
 
 async def _run_paper_search_agentica(
@@ -254,7 +255,7 @@ async def _run_paper_search_direct(
     from .pipeline import call_direct_text
 
     # Do an arXiv search ourselves and feed results to the LLM for ranking
-    search_results = await _arxiv_search(topic)
+    search_results = await _combined_paper_search(topic)
 
     selector_output = await call_direct_text(
         backend,

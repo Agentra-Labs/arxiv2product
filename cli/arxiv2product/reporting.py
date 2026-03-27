@@ -15,6 +15,7 @@ def build_report(
     redteam: str,
     redteam_sources: str,
     final: str,
+    quality_review: str = "",
 ) -> str:
     """Assemble all agent outputs into a single markdown report."""
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -34,12 +35,13 @@ def build_report(
 ## Table of Contents
 
 1. [Executive Summary — Ranked Product Ideas](#executive-summary--ranked-product-ideas)
-2. [Technical Primitives](#technical-primitives)
-3. [Market Pain Mapping](#market-pain-mapping)
-4. [Cross-Pollinated Ideas](#cross-pollinated-ideas)
-5. [Infrastructure Inversion](#infrastructure-inversion--second-order-opportunities)
-6. [Temporal Arbitrage](#temporal-arbitrage)
-7. [Red Team Destruction](#red-team-destruction)
+2. [Quality Review](#quality-review)
+3. [Technical Primitives](#technical-primitives)
+4. [Market Pain Mapping](#market-pain-mapping)
+5. [Cross-Pollinated Ideas](#cross-pollinated-ideas)
+6. [Infrastructure Inversion](#infrastructure-inversion--second-order-opportunities)
+7. [Temporal Arbitrage](#temporal-arbitrage)
+8. [Red Team Destruction](#red-team-destruction)
 
 ---
 
@@ -52,6 +54,12 @@ def build_report(
 ## Executive Summary — Ranked Product Ideas
 
 {final}
+
+---
+
+## Quality Review
+
+{quality_review or "_No automated quality review was available._"}
 
 ---
 

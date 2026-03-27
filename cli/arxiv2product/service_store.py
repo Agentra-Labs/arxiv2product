@@ -374,3 +374,57 @@ class ServiceStore:
                 for row in feedback
             ],
         }
+
+    def get_learning_digest(self, *, limit: int = 6) -> str:
+        with closing(self._connect()) as connection:
+            reports = connection.execute(
+                """
+                select coalesce(title, paper_ref) as title,
+                       coalesce(summary, 'Report in progress.') as summary,
+                       created_at
+                from report_jobs
+                where status = 'completed'
+                order by updated_at desc
+                limit ?
+                """,
+                (limit,),
+            ).fetchall()
+            feedback = connection.execute(
+                """
+                select coalesce(rationale, '') as rationale,
+                       honesty_score,
+                       usefulness_score,
+                       specificity_score,
+                       overall_score,
+                       created_at
+                from feedback_submissions
+                order by created_at desc
+                limit ?
+                """,
+                (limit,),
+            ).fetchall()
+
+        lines: list[str] = []
+        if reports:
+            lines.append("### Recent Completed Reports")
+            for row in reports:
+                lines.append(
+                    f"- {row['title']} — {row['summary']} ({row['created_at'][:10]})"
+                )
+
+        if feedback:
+            if lines:
+                lines.append("")
+            lines.append("### Recent Feedback Signals")
+            for row in feedback:
+                rationale = row["rationale"].strip()[:180]
+                if not rationale:
+                    rationale = "No rationale provided."
+                lines.append(
+                    "- score "
+                    f"{row['overall_score']} | honesty {row['honesty_score']} | "
+                    f"usefulness {row['usefulness_score']} | specificity {row['specificity_score']} "
+                    f"— {rationale}"
+                )
+
+        return "\n".join(lines)

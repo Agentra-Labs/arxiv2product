@@ -29,9 +29,11 @@ class ReportingTests(unittest.TestCase):
             redteam="Redteam",
             redteam_sources="### Supporting Sources\n- [Redteam](https://example.com/3)",
             final="Final",
+            quality_review="### Quality Review\n- **Status**: Accepted",
         )
         self.assertIn("### Supporting Sources", report)
         self.assertIn("https://example.com/3", report)
+        self.assertIn("## Quality Review", report)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ from arxiv2product.pipeline import (
     build_compact_paper_context,
     build_full_paper_context,
     gather_agent_calls,
+    _parse_quality_review,
 )
 
 
@@ -88,6 +89,27 @@ class PipelineAsyncTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(output, "products_2603_09229.md")
         run_direct.assert_awaited_once_with(["2603.09229"], "anthropic/claude-sonnet-4", "backend", "", {})
         run_agentica.assert_not_awaited()
+
+    def test_parse_quality_review_extracts_scores_and_flags(self):
+        review = _parse_quality_review(
+            """
+            {
+              "novelty_score": 88,
+              "usefulness_score": 91,
+              "evidence_score": 84,
+              "duplication_risk": 12,
+              "needs_revision": false,
+              "issues": ["Generic buyer framing"],
+              "repair_instructions": ["Name the first customer"],
+              "rationale": "Strong but needs a sharper buyer."
+            }
+            """
+        )
+
+        self.assertEqual(review.novelty_score, 88)
+        self.assertFalse(review.needs_revision)
+        self.assertIn("Generic buyer framing", review.issues)
+        self.assertIn("- **Novelty**: 88/100", review.as_markdown())
 
 
 if __name__ == "__main__":

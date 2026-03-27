@@ -77,6 +77,34 @@ class ServiceStoreTests(unittest.TestCase):
         self.assertGreater(strong.overall_score, weak.overall_score)
         self.assertGreaterEqual(strong.credits_awarded, weak.credits_awarded)
 
+    def test_learning_digest_includes_recent_reports_and_feedback(self) -> None:
+        job = self.store.create_report_job(user_id="reviewer-1", paper_ref="2603.08127", model=None)
+        self.store.complete_report_job(
+            job_id=job["id"],
+            title="Example report",
+            paper_id="2603.08127",
+            summary="Summary",
+            markdown="# Report",
+        )
+        score = heuristic_feedback_score(
+            honesty_rating=4,
+            usefulness_rating=4,
+            detailed_feedback="The report is specific because it names the buyer and moat risk.",
+        )
+        self.store.record_feedback(
+            user_id="reviewer-1",
+            report_job_id=job["id"],
+            honesty_rating=4,
+            usefulness_rating=4,
+            detailed_feedback="Specific feedback with buyer and moat comments.",
+            score=score.as_dict(),
+        )
+
+        digest = self.store.get_learning_digest(limit=3)
+        self.assertIn("Recent Completed Reports", digest)
+        self.assertIn("Recent Feedback Signals", digest)
+        self.assertIn("Example report", digest)
+
 
 if __name__ == "__main__":
     unittest.main()

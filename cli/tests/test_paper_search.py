@@ -84,6 +84,29 @@ class SelectorParsingTests(unittest.TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].arxiv_id, "2603.09229")
 
+    def test_parse_prefers_github_linked_entries(self):
+        text = json.dumps([
+            {
+                "arxiv_id": "2603.00001",
+                "title": "No Repo",
+                "abstract": "",
+                "score": 0.95,
+                "reason": "Missing repo",
+                "github_url": "",
+            },
+            {
+                "arxiv_id": "2603.00002",
+                "title": "Has Repo",
+                "abstract": "",
+                "score": 0.90,
+                "reason": "Has code",
+                "github_url": "https://github.com/example/repo",
+            },
+        ])
+        results = _parse_selector_output(text)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].github_url, "https://github.com/example/repo")
+
 
 if __name__ == "__main__":
     unittest.main()
