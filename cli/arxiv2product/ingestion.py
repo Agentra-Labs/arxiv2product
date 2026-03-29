@@ -1,3 +1,4 @@
+import asyncio
 import re
 import tempfile
 
@@ -23,40 +24,63 @@ ARXIV_PREFIX_PATTERN = re.compile(
 
 
 def normalize_arxiv_id(arxiv_id_or_url: str) -> str:
-    return (
-        ARXIV_PREFIX_PATTERN.sub("", arxiv_id_or_url).strip("/").split("v")[0]
-    )
+    return ARXIV_PREFIX_PATTERN.sub("", arxiv_id_or_url).strip("/").split("v")[0]
 
 
-async def fetch_paper(arxiv_id_or_url: str, github_url: str = "") -> PaperContent:
+async def fetch_paper(
+    arxiv_id_or_url: str,
+    github_url: str = "",
+    max_retries: int = 5,
+    base_delay: float = 2.0,
+) -> PaperContent:
     """Fetch paper metadata via arxiv API and parse the full PDF."""
     arxiv_id = normalize_arxiv_id(arxiv_id_or_url)
-    client = arxiv.Client()
-    search = arxiv.Search(id_list=[arxiv_id])
-    result = next(client.results(search))
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        pdf_path = result.download_pdf(dirpath=tmpdir)
-        full_text, sections, fig_captions, tables = parse_pdf(pdf_path)
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            client = arxiv.Client()
+            search = arxiv.Search(id_list=[arxiv_id])
+            result = next(client.results(search))
 
-    ref_section = sections.get("references", sections.get("bibliography", ""))
+            with tempfile.TemporaryDirectory() as tmpdir:
+                pdf_path = result.download_pdf(dirpath=tmpdir)
+                full_text, sections, fig_captions, tables = parse_pdf(pdf_path)
 
-    if not github_url:
-        github_match = re.search(r"https?://github\.com/[a-zA-Z0-9\-_./]+", result.summary)
-        if github_match:
-            github_url = github_match.group(0)
+            ref_section = sections.get("references", sections.get("bibliography", ""))
 
-    return PaperContent(
-        arxiv_id=arxiv_id,
-        title=result.title,
-        authors=[author.name for author in result.authors],
-        abstract=result.summary,
-        full_text=full_text,
-        sections=sections,
-        figures_captions=fig_captions,
-        tables_text=tables,
-        references_titles=extract_reference_titles(ref_section),
-        github_url=github_url,
+            if not github_url:
+                github_match = re.search(
+                    r"https?://github\.com/[a-zA-Z0-9\-_./]+", result.summary
+                )
+                if github_match:
+                    github_url = github_match.group(0)
+
+            return PaperContent(
+                arxiv_id=arxiv_id,
+                title=result.title,
+                authors=[author.name for author in result.authors],
+                abstract=result.summary,
+                full_text=full_text,
+                sections=sections,
+                figures_captions=fig_captions,
+                tables_text=tables,
+                references_titles=extract_reference_titles(ref_section),
+                github_url=github_url,
+            )
+        except arxiv.HTTPError as exc:
+            last_error = exc
+            if exc.status == 429:
+                delay = base_delay * (2**attempt)
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(delay)
+                    continue
+            raise
+        except StopIteration:
+            raise ValueError(f"Paper not found: {arxiv_id}")
+
+    raise last_error or ValueError(
+        f"Failed to fetch paper after {max_retries} attempts"
     )
 
 
